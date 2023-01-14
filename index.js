@@ -25,33 +25,38 @@ for(let i = 0; i<urlImg.length; i++){
     slider.append(circle[i]);
 }
 
+let startPositionMove = 0;
 
 nav[0].addEventListener("click",()=> back(slide[0].id));
 nav[1].addEventListener("click", ()=> next(slide[2].id));
 
+slider.onmousedown = function(e){
+    startPositionMove = e.pageX;
+}
 
+slider.onmouseup = function(e){
+    if(e.pageX - startPositionMove>0) back(slide[0].id)
+    else if(e.pageX - startPositionMove<0)  next(slide[2].id)
+}
+
+document.addEventListener("keydown",(e)=>{
+    if(e.code == "ArrowLeft") back(slide[0].id)
+    if(e.code == 'ArrowRight') next(slide[2].id)
+})
 
 function back(goToId){
-    console.log(goToId);
-
     slide[0].style.right = "100%"
     anim("toRight", 0);
     setTimeout(()=> initImg(goToId),1000)
-    
 }
 
 function next(goToId){
-    console.log(goToId);
-
     slide[2].style.right = "-100%"
     anim("toLeft", 2)
     setTimeout(()=>initImg(goToId),1000);
-    
 }
 
 function anim(direction, nextSlide){
-    console.log(nextSlide,"nextSlide");
-
     slide[nextSlide].style.zIndex=1;
     slide[nextSlide].classList.add(direction);
     slide[1].classList.add(direction);
@@ -73,7 +78,6 @@ function goToSlide(goToId){
     }
 
 }
-
 
 function initImg(n){
     n--;
