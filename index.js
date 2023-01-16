@@ -1,117 +1,109 @@
-const slider = document.querySelector(".slider")
-const urlImg=[
-    "url(img/1.jpeg)",
-    "url(img/2.jpg)",
-    "url(img/3.jpg)",
-    "url(img/4.jpg)",
-    "url(img/5.png)",
-    "url(img/6.jpg)",
-    
-]
-const nav = document.querySelectorAll(".nav");
+const el = (tag = 'div', attrs = {}, children = [], listeners = {}) => {
+    children = [].concat(children);
 
-let slide = [document.createElement('div'), document.createElement('div'), document.createElement('div')];
-slide.forEach(item =>{
-    item.className='item';
-})
+    const elem = document.createElement(tag);
 
-let circle = []
-for(let i = 0; i<urlImg.length; i++){
-    circle[i]= document.createElement("div");
-    circle[i].className='circle';
-    circle[i].id=i+1;
-    circle[i].style.left = 200+i*15+1+"px";
-    circle[i].addEventListener("click", e => goToSlide(e.target.id))
-    slider.append(circle[i]);
-}
+    for (const [eventName, callback] of Object.entries(listeners))
+        elem.addEventListener(eventName, callback);
 
-let startPositionMove = 0;
+    if (typeof attrs === 'string') elem.className = attrs;
+    else
+        for (const [key, value] of Object.entries(attrs))
+            elem.setAttribute(key, value);
 
-nav[0].addEventListener("click",()=> back(slide[0].id));
-nav[1].addEventListener("click", ()=> next(slide[2].id));
+    elem.append(...children);
 
-slider.onmousedown = function(e){
-    startPositionMove = e.pageX;
-}
+    return elem;
+};
 
-slider.onmouseup = function(e){
-    if(e.pageX - startPositionMove>0) back(slide[0].id)
-    else if(e.pageX - startPositionMove<0)  next(slide[2].id)
-}
+const elDiv = el.bind(null, 'div');
 
-document.addEventListener("keydown",(e)=>{
-    if(e.code == "ArrowLeft") back(slide[0].id)
-    if(e.code == 'ArrowRight') next(slide[2].id)
-})
+const createSlider = (items) => {
+    const bullets = items.map((_, i) =>
+        elDiv('slider__bullet', [], { click: moveTo.bind(null, i) })
+    );
 
-function back(goToId){
-    slide[0].style.right = "100%"
-    anim("toRight", 0);
-    setTimeout(()=> initImg(goToId),1000)
-}
+    const container = elDiv(
+        'slider__container',
+        items.map((elem) => elDiv('slider__container-item', elem))
+    );
 
-function next(goToId){
-    slide[2].style.right = "-100%"
-    anim("toLeft", 2)
-    setTimeout(()=>initImg(goToId),1000);
-}
+    const slider = elDiv(
+        { tabindex: '0', class: 'slider' },
+        [
+            container,
+            elDiv('slider__bullets', bullets),
+            elDiv('slider__nav', [
+                elDiv('slider__nav-button slider__nav-button_side_left', [], {
+                    click: stepTo.bind(null, -1),
+                }),
+                elDiv('slider__nav-button slider__nav-button_side_right', [], {
+                    click: stepTo.bind(null, 1),
+                }),
+            ]),
+        ],
+        {
+            keydown: (e) => {
+                if (e.key === 'ArrowLeft') return stepTo(-1);
+                if (e.key === 'ArrowRight') return stepTo(1);
+            },
+        }
+    );
 
-function anim(direction, nextSlide){
-    slide[nextSlide].style.zIndex=1;
-    slide[nextSlide].classList.add(direction);
-    slide[1].classList.add(direction);
-    setTimeout(()=>{
-        slide[nextSlide].classList.remove(direction);
-        slide[1].classList.remove(direction);
-    },1000)
-}
+    const getIndex = () => Number(slider.dataset.index);
+    const setIndex = (idx) => (slider.dataset.index = idx);
 
-function goToSlide(goToId){
-    if(Number(slide[1].id) < goToId){
-        slide[2].style.backgroundImage = urlImg[goToId-1];
-        setTimeout(()=>next(goToId),500) 
-    }else
-    if(slide[1].id > goToId){
-        slide[0].style.backgroundImage =urlImg[goToId-1];
-        setTimeout(()=>back(goToId),500) 
-       
+    let activeBullet;
+    function moveTo(index) {
+        setIndex(index);
+
+        activeBullet?.classList.remove('slider__bullet_active');
+
+        activeBullet = bullets[index];
+        activeBullet.classList.add('slider__bullet_active');
+
+        container.style.transform = `translate(-${100 * index}%)`;
     }
 
-}
+    function stepTo(diff) {
+        let index = getIndex();
 
-function initImg(n){
-    n--;
-    slide.forEach((item, i) =>{ 
-        switch(n+i){
-            case urlImg.length+1:
-                    item.style.backgroundImage = urlImg[0];
-                    slide[i].id = 1;  
-                    break;
-            case urlImg.length+2:
-                    item.style.backgroundImage = urlImg[1];
-                    slide[i].id = 2; 
-                    break;
-            case 0: 
-                    item.style.backgroundImage = urlImg[urlImg.length-1];
-                    slide[i].id = urlImg.length;
-                    break;
-            case -1: 
-                    item.style.backgroundImage = urlImg[urlImg.length-2];
-                    slide[i].id = urlImg.length-1;
-                    break;
-            default: 
-                    item.style.backgroundImage = urlImg[n+i-1];
-                    slide[i].id = n+i;
-                    break;
-        }
-        slider.append(slide[i]);
-    })
-    slide[1].style.zIndex=1;
-    circel= circle.map(item => {
-        item.classList.remove("circleSelect");
-    });
-    circle[Number(slide[1].id-1)].classList.add("circleSelect");
+        if (index + diff >= items.length) index = 0;
+        else if (index + diff < 0) index = items.length - 1;
+        else index += diff;
 
-}
+        moveTo(index);
+    }
 
-initImg(3);
+    moveTo(0);
+
+    return slider;
+};
+
+document.body.append(
+    createSlider(
+        [
+            'img/1.jpeg',
+            'img/2.jpg',
+            'img/3.jpg',
+            'img/4.jpg',
+            'img/5.png',
+            'img/6.jpg',
+        ].map((src) => el('img', { src, style: 'width: 500px' }))
+    ),
+    createSlider(
+        [
+            ['img/1.jpeg', 'img/2.jpg', 'img/3.jpg'],
+            ['img/4.jpg', 'img/5.png', 'img/6.jpg'],
+        ].reduce(
+            (acc, imgs) =>
+                acc.concat(
+                    elDiv(
+                        'img-list',
+                        imgs.map((src) => el('img', { src }))
+                    )
+                ),
+            []
+        )
+    )
+);
